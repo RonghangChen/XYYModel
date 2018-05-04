@@ -61,7 +61,7 @@ objc轻量JSON转模型库
 }
 
 ### 2.自定义value值转换
-实现convert<PropertyName>Value:方法，示例如下
+实现convert#PropertyName#Value:方法，示例如下
 
 - (XYYDemoStruct)convertDemoStructValue:(id)value
 
@@ -125,7 +125,7 @@ objc轻量JSON转模型库
 
 #### 属性值转换顺序是：
 
-1.调用（如果存在）convert<PropertyName>Value:进行转换，调用方法前会进行方法参数和返回值判断
+1.调用（如果存在）convert#PropertyName#Value:进行转换，调用方法前会进行方法参数和返回值判断
     
 2.进行默认转换
 
@@ -135,7 +135,7 @@ objc轻量JSON转模型库
 
 2.属性类型为对象:首先判断值是否是同一种类对象，是直接返回，否则执行默认转换策略进行转换（能进行默认转换的类NSString、NSMutableString、NSMutableArray、NSMutableDictionary、NSNumber、NSDecimalNumber、NSDate以及MyModel子类），无法转换则返回nil
 
-3.属性类型为结构体或联合体:使用<struct/union>Value方法进行转换，无法转换则返回默认空值
+3.属性类型为结构体或联合体:使用#structName/unionName#Value方法进行转换，无法转换则返回默认空值
 
 4.属性类型为C语言数字类型:使用数字类型相关方法进行转换,无法转换则返回默认空值
 
