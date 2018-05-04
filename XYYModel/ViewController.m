@@ -7,6 +7,7 @@
 //
 
 #import "ViewController.h"
+#import "XYYDemoModel.h"
 
 @interface ViewController ()
 
@@ -17,6 +18,13 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
+    
+    NSArray * dics = [NSArray arrayWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"Demo" ofType:@"plist"]];
+    
+    NSArray<XYYDemoModel *> * models = [XYYDemoModel modelsWithDictionarys:dics];
+    
+    NSLog(@"%@",models);
+    
 }
 
 

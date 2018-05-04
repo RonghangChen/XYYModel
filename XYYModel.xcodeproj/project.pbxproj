@@ -13,6 +13,9 @@
 		D7FAF138209C4F2B006EDA41 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D7FAF137209C4F2B006EDA41 /* Assets.xcassets */; };
 		D7FAF13B209C4F2B006EDA41 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = D7FAF139209C4F2B006EDA41 /* LaunchScreen.storyboard */; };
 		D7FAF13E209C4F2B006EDA41 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = D7FAF13D209C4F2B006EDA41 /* main.m */; };
+		D7FAF147209C4F6E006EDA41 /* XYYModel.m in Sources */ = {isa = PBXBuildFile; fileRef = D7FAF145209C4F6D006EDA41 /* XYYModel.m */; };
+		D7FAF14B209C5066006EDA41 /* XYYDemoModel.m in Sources */ = {isa = PBXBuildFile; fileRef = D7FAF14A209C5066006EDA41 /* XYYDemoModel.m */; };
+		D7FAF14D209C5497006EDA41 /* Demo.plist in Resources */ = {isa = PBXBuildFile; fileRef = D7FAF14C209C5497006EDA41 /* Demo.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +29,11 @@
 		D7FAF13A209C4F2B006EDA41 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		D7FAF13C209C4F2B006EDA41 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D7FAF13D209C4F2B006EDA41 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		D7FAF145209C4F6D006EDA41 /* XYYModel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XYYModel.m; sourceTree = "<group>"; };
+		D7FAF146209C4F6E006EDA41 /* XYYModel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XYYModel.h; sourceTree = "<group>"; };
+		D7FAF149209C5066006EDA41 /* XYYDemoModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XYYDemoModel.h; sourceTree = "<group>"; };
+		D7FAF14A209C5066006EDA41 /* XYYDemoModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XYYDemoModel.m; sourceTree = "<group>"; };
+		D7FAF14C209C5497006EDA41 /* Demo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Demo.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +66,8 @@
 		D7FAF12D209C4F28006EDA41 /* XYYModel */ = {
 			isa = PBXGroup;
 			children = (
+				D7FAF144209C4F40006EDA41 /* XYYModel */,
+				D7FAF148209C503C006EDA41 /* Demo */,
 				D7FAF12E209C4F28006EDA41 /* AppDelegate.h */,
 				D7FAF12F209C4F28006EDA41 /* AppDelegate.m */,
 				D7FAF131209C4F28006EDA41 /* ViewController.h */,
@@ -69,6 +79,25 @@
 				D7FAF13D209C4F2B006EDA41 /* main.m */,
 			);
 			path = XYYModel;
+			sourceTree = "<group>";
+		};
+		D7FAF144209C4F40006EDA41 /* XYYModel */ = {
+			isa = PBXGroup;
+			children = (
+				D7FAF146209C4F6E006EDA41 /* XYYModel.h */,
+				D7FAF145209C4F6D006EDA41 /* XYYModel.m */,
+			);
+			path = XYYModel;
+			sourceTree = "<group>";
+		};
+		D7FAF148209C503C006EDA41 /* Demo */ = {
+			isa = PBXGroup;
+			children = (
+				D7FAF149209C5066006EDA41 /* XYYDemoModel.h */,
+				D7FAF14A209C5066006EDA41 /* XYYDemoModel.m */,
+				D7FAF14C209C5497006EDA41 /* Demo.plist */,
+			);
+			path = Demo;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -129,6 +158,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D7FAF13B209C4F2B006EDA41 /* LaunchScreen.storyboard in Resources */,
+				D7FAF14D209C5497006EDA41 /* Demo.plist in Resources */,
 				D7FAF138209C4F2B006EDA41 /* Assets.xcassets in Resources */,
 				D7FAF136209C4F29006EDA41 /* Main.storyboard in Resources */,
 			);
@@ -141,8 +171,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D7FAF147209C4F6E006EDA41 /* XYYModel.m in Sources */,
 				D7FAF133209C4F29006EDA41 /* ViewController.m in Sources */,
 				D7FAF13E209C4F2B006EDA41 /* main.m in Sources */,
+				D7FAF14B209C5066006EDA41 /* XYYDemoModel.m in Sources */,
 				D7FAF130209C4F28006EDA41 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
