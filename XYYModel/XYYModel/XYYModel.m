@@ -1,6 +1,6 @@
 //
 //  MyModel.m
-//  
+//
 //
 //  Created by 陈荣航 on 2017/12/6.
 //  Copyright © 2017年 LeslieChen. All rights reserved.
@@ -203,10 +203,10 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     //结构体类型名称
     NSString * _typeStruct;
     
-    //setter方法名（只读属性改值为nil）
-    NSString * _setterName;
-    //属性关联的变量名
-    NSString * _varName;
+    //属性setter方法（只读属性改值为nil）
+    SEL _setterSelector;
+    //属性关联的变量(无关联变量为nil)
+    Ivar _ivar;
 }
 
 - (id)initWithName:(NSString *)name;
@@ -335,12 +335,16 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 //获取类型内存尺寸
                 data->_typeSize = _sizeForType(data->_typeEncoding.UTF8String);
                 
-                if (isReadonly) { //成员变量名称
-                    data->_varName = [NSString stringWithUTF8String:ivarValue];
-                }else { //setter方法名称
-                    data->_setterName = setterValue != NULL ? [NSString stringWithUTF8String:setterValue] : [propertyName defaultSetterSelectorString];
+                //获取属性关联的成员变量
+                if (ivarValue) {
+                    data -> _ivar = class_getInstanceVariable(self.class, ivarValue);
                 }
-        }
+                
+                //获取属性setter方法
+                if (!isReadonly) {
+                    data->_setterSelector = sel_registerName(setterValue ? setterValue : [propertyName defaultSetterSelectorString].UTF8String);
+                }
+            }
         
         //释放内存
         if (attributes != NULL) {
@@ -376,6 +380,10 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 
 //是否需要忽视属性
 - (BOOL)needIgnoreProperty:(NSString *)propertyName {
+    return NO;
+}
+
++ (BOOL)alwaysAccessIvarDirectlyIfCan {
     return NO;
 }
 
@@ -427,8 +435,9 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 - (void)_updateProperty:(_MyModelPropertyData *)propertyData withValue:(id)value
 {
     //使用setter赋值
-    if (propertyData->_setterName != nil) {
-        SEL setter = sel_registerName(propertyData->_setterName.UTF8String);
+    if (propertyData->_setterSelector &&
+        (propertyData ->_ivar == NULL || ![[self class] alwaysAccessIvarDirectlyIfCan])) {
+        SEL setter = propertyData->_setterSelector;
         switch (propertyData->_type) {
             case _MyPropertyTypeObject: //对象
                 ((void(*)(id,SEL,id))objc_msgSend)(self,setter,value);
@@ -464,25 +473,21 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
         
     }else { //直接对成员变量进行赋值
         
-        assert(propertyData->_varName != nil);
-        
-        Ivar ivar = class_getInstanceVariable(self.class, propertyData->_varName.UTF8String);
-        if (ivar == nil) {
-            return;
-        }
+        assert(propertyData->_ivar != nil);
         
         if (propertyData->_type == _MyPropertyTypeObject) { //对象
-            object_setIvar(self, ivar, value);
+            object_setIvar(self, propertyData->_ivar, value);
         }else {
             
             //获取成员变量偏移
-            ptrdiff_t offset = ivar_getOffset(ivar);
+            ptrdiff_t offset = ivar_getOffset(propertyData->_ivar);
             void * location = (((char *)(__bridge void *)self) + offset);
             
             if (propertyData->_type == _MyPropertyTypeStruct) { //结构体/联合体
                 
                 //读取值
                 void * pValue = malloc(propertyData->_typeSize);
+                memset(pValue, 0, propertyData->_typeSize);
                 [(NSValue *)value getValue:pValue];
                 
                 //设置值
@@ -766,10 +771,32 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
         Ivar * ivars = class_copyIvarList([self class], &outCount);
         for (int i = 0; i < outCount; ++ i) {
             Ivar ivar = ivars[i];
+            
+            const char * typeEncoding = ivar_getTypeEncoding(ivar);
+            _MyPropertyType type = _getPropertyType(typeEncoding);
+            if (type == _MyPropertyTypeOther) {
+                continue;
+            }
+            
             NSString * key = [NSString stringWithUTF8String:ivar_getName(ivar)];
             id value = [aDecoder decodeObjectForKey:key];
-            if (value) {
-                [self setValue:value forKey:key];
+            if (type == _MyPropertyTypeObject) { //对象
+                object_setIvar(self, ivar, value);
+            }else {
+                void * location = (((char *)(__bridge void *)self) + ivar_getOffset(ivar));
+                size_t size = _sizeForType(typeEncoding);
+                if (type == _MyPropertyTypeNumber) { //数字
+                    _MyPropertyNumberValue numberValue = _propertyNumberValueForValue(value, typeEncoding);
+                    memcpy(location, &numberValue, size);
+                }else { //其他
+                    void * buffer = malloc(size);
+                    memset(buffer, 0, size);
+                    [(NSValue *)value getValue:buffer];
+                    
+                    memcpy(location, buffer, size);
+                    
+                    free(buffer);
+                }
             }
         }
         
@@ -788,8 +815,33 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     Ivar * ivars = class_copyIvarList([self class], &outCount);
     for (int i = 0; i < outCount; i ++) {
         Ivar ivar = ivars[i];
+        
+        const char * typeEncoding = ivar_getTypeEncoding(ivar);
+        _MyPropertyType type = _getPropertyType(typeEncoding);
+        if (type == _MyPropertyTypeOther) {
+            continue;
+        }
+        
+        id value = nil;
+        if (type == _MyPropertyTypeObject) { //对象
+            value = object_getIvar(self, ivar);
+        }else {
+            void * location = (((char *)(__bridge void *)self) + ivar_getOffset(ivar));
+            size_t size = _sizeForType(typeEncoding);
+            if (type == _MyPropertyTypeNumber) { //数字
+                _MyPropertyNumberValue buffer;
+                memcpy(&buffer, location, size);
+                value = [NSObject boxValue:&buffer typeEncoding:typeEncoding];
+            }else { //其他
+                void * buffer = malloc(size);
+                memcpy(buffer, location, size);
+                value = [NSObject boxValue:buffer typeEncoding:typeEncoding];
+                free(buffer);
+            }
+        }
+        
         NSString * key = [NSString stringWithUTF8String:ivar_getName(ivar)];
-        [aCoder encodeObject:[self valueForKey:key] forKey:key];
+        [aCoder encodeObject:value forKey:key];
     }
     
     //释放内存
@@ -821,7 +873,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     if (typeEncoding == NULL || *typeEncoding == '\0') {
         return nil;
     }
-
+    
     id returnValue = nil;
     
     switch (*typeEncoding) {
@@ -952,11 +1004,11 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 {
     return [self performConvertReturnTypes:[NSObject numberTypeEncodings]
                                  selectors:@selector(doubleValue),
-                                           @selector(floatValue),
-                                           @selector(longLongValue),
-                                           @selector(integerValue),
-                                           @selector(intValue),
-                                           @selector(boolValue),NULL];
+            @selector(floatValue),
+            @selector(longLongValue),
+            @selector(integerValue),
+            @selector(intValue),
+            @selector(boolValue),NULL];
 }
 
 @end
@@ -1009,7 +1061,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 break;
         }
     }
-
+    
     return returnValue;
 }
 

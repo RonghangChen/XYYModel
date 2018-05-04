@@ -79,6 +79,13 @@
  */
 - (Class)arrayContentClassForProperty:(NSString *)propertyName;
 
+/**
+ * 指示是否尽可能直接访问成员变量进行赋值
+ * @return 返回是否尽可能直接访问成员变量进行赋值，默认为NO
+ * @note 覆盖该方法可定制赋值策略，直接访问成员变量效率高，但是会导致自定义setter方法不会被调用，如果没有自定义setter方法，返回YES可以提升赋值效率
+ */
++ (BOOL)alwaysAccessIvarDirectlyIfCan;
+
 
 /**
  * 开始更新某一个属性时会调用该方法
