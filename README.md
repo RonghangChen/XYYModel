@@ -1,108 +1,161 @@
 # XYYModel
-objc轻量JSON转模型库
+objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使用简单，高容错性，转换过程可自定义
+
+# 主要功能
+
+1.字典（json）转模型
+
+2.模型转字典（json）
+
+3.模型自动归档
+
 
 # 支持的功能
-1.自定义key到属性的映射
 
-2.自定义value值转换
+1.可定制key到属性的映射
+
+2.可定制value值转换过程
 
 3.强大的默认value转换机制，容错处理完美
 
-4.支持属性自定义setter方法赋值和对关联的成员变量直接赋值
+4.可定制取值及赋值方式
 
-5.支持自定义结构体/联合体
+5.支持自定义结构体/联合体转换
 
 6.支持组合模型，即模型包含模型或模型数组
 
-# 使用方法
 
-## 1.简单实用
-继承XYYModel类，调用modelsWithDictionarys:或者initWithDictionary:即可进行字典到模型的装换，或者也可以使用updateWithDictionary:进行更新模型
+# 如何使用
+
+## 1.字典转模型
+继承XYYModel类，调用modelsWithDictionarys:或者initWithDictionary:即可进行字典到模型的转换，也可以使用updateWithDictionary:进行更新模型
 
 
-## 2.忽视特定属性
-覆盖实现needIgnoreProperty:方法，示例如下
+## 2.模型转字典
+调用convertToDictionaryWithKeys:forJson:或者convertToDictionary:即可进行模型到字典的转换
 
-- (BOOL)needIgnoreProperty:(NSString *)propertyName
+
+## 3.定制转换过程
+
+### 3.1.忽视属性
+覆盖实现needIgnoreProperty:forDicToModle:方法，示例如下
 
 {
 
-    if ([propertyName isEqualToString:@"xxx"]) {
+    - (BOOL)needIgnoreProperty:(NSString *)propertyName forDicToModle:(BOOL)dicToModle
+    {
+
+        if ([propertyName isEqualToString:@"needIgnore"]) {
+            return YES;
+        }
     
-        return YES;
-        
+        if (dicToModle && [propertyName isEqualToString:@"needIgnoreDicToModle"]) {
+            return YES;
+        }
+    
+        //add other
+    
+        return [super needIgnoreProperty:propertyName forDicToModle:dicToModle];
+    
     }
-    
-    //add other
-    
-    return [super needIgnoreProperty:propertyName];
     
 }
 
-## 2.自定义转换过程
 
-### 1.自定义key到属性的映射
+### 3.2.定制key到属性的映射
 覆盖实现propertyNameForKey:方法，示例如下
 
-- (NSString *)propertyNameForKey:(NSString *)key
-
 {
 
-    if ([key isEqualToString:@"xxx"]) {
-    
-        return @"xxx1";
-        
-    }
-    
-    //add other
-    
-    return [super propertyNameForKey:key];
-    
-}
+    - (NSString *)propertyNameForKey:(NSString *)key
+    {
 
-### 2.自定义value值转换
-实现convert#PropertyName#Value:方法，示例如下
+        if ([key isEqualToString:@"key1"]) {
 
-- (XYYDemoStruct)convertDemoStructValue:(id)value
+            return @"propertyName1";
 
-{
-
-    XYYDemoStruct result = {0};
-    
-    if ([value isKindOfClass:[NSString class]]) {
-    
-        NSArray<NSString *> * components = [value componentsSeparatedByString:@","];
-        
-        if (components.count == 2) {
-        
-            result.value1 = [components[0] intValue];
-            
-            result.value2 = [components[1] floatValue];
-            
         }
-        
+
+        //add other
+
+        return [super propertyNameForKey:key];
     }
-    
-    
-    return result;
     
 }
 
-### 3.实现组合模型转换
-覆盖实现arrayContentClassForProperty:方法，示例如下
 
-- (Class)arrayContentClassForProperty:(NSString *)propertyName 
+### 3.3.定制value值转换
+实现convert#PropertyName#Value:格式方法，返回转换后的值，示例如下
+
 {
-    
-    if ([propertyName isEqualToString:@"subModels"]) {
-    
-        return [XYYSubDemoModel class];
-        
+
+    - (XYYDemoStruct)convertDemoStructValue:(id)value
+    {
+
+        XYYDemoStruct result = {0};
+
+        if ([value isKindOfClass:[NSString class]]) {
+
+            NSArray<NSString *> * components = [value componentsSeparatedByString:@","];
+
+            if (components.count == 2) {
+
+                result.value1 = [components[0] intValue];
+
+                result.value2 = [components[1] floatValue];
+
+            }
+
+        }
+
+        return result;
     }
     
-    return nil;
-    
 }
+
+### 3.4.定制赋值取值方式
+实现alwaysAccessIvarDirectlyIfCanForDicToModle:方法，可定制取值赋值方法，示例如下
+
+{
+
+    - (XYYDemoStruct)alwaysAccessIvarDirectlyIfCanForDicToModle:(id)dicToModle
+    {
+        if(dicToModle) {
+            return YES;
+        }
+
+        return NO;
+    }
+}
+
+### 3.5.定制value空值
+实现nil#PropertyName#Value:格式方法，返回属性对应的空值，示例如下
+
+{
+
+    - (CGSize)nilSize1Value:(id)value
+    {
+        return CGSizeMake(1.f,2.f);
+    }
+}
+
+
+### 3.5实现组合模型转换
+覆盖实现arrayContentClassForProperty:方法，示例如下
+{
+
+    - (Class)arrayContentClassForProperty:(NSString *)propertyName 
+    {
+        if ([propertyName isEqualToString:@"subModels"]) {
+
+            return [XYYSubDemoModel class];
+
+        }
+
+        return nil;
+    }
+}
+
 
 
 # 转换策略及流程简介
