@@ -9,7 +9,33 @@
 #import "XYYDemoModel.h"
 #import <objc/runtime.h>
 
+@implementation NSString(XYYDemoStruct1)
+
+
+- (XYYDemoStruct1)XYYDemoStruct1Value
+{
+    XYYDemoStruct1 result = {0};
+    NSArray<NSString *> * components = [self componentsSeparatedByString:@","];
+    if (components.count == 2) {
+        result.value1 = [components[0] intValue];
+        result.value2 = [components[1] floatValue];
+    }
+    
+    return result;
+}
+
++ (NSString *)stringWithXYYDemoStruct1:(XYYDemoStruct1)struct1
+{
+    return [NSString stringWithFormat:@"%i,%f",struct1.value1,struct1.value2];
+}
+
+@end
+
 @implementation XYYDemoModel
+
+- (BOOL)alwaysAccessIvarDirectlyIfCanForDicToModle:(BOOL)dicToModle {
+    return !dicToModle;
+}
 
 - (XYYDemoStruct)convertDemoStructValue:(id)value
 {
@@ -25,6 +51,10 @@
     return result;
 }
 
+- (NSString *)convertDemoStructToJsonValue {
+    return [NSString stringWithFormat:@"%i,%f",self.demoStruct.value1,self.demoStruct.value2];
+}
+
 - (Class)arrayContentClassForProperty:(NSString *)propertyName {
     
     if ([propertyName isEqualToString:@"subModels"]) {
@@ -34,54 +64,13 @@
     return nil;
 }
 
-
-- (NSString *)description
-{
-    NSMutableString * description = [NSMutableString string];
-    
-    unsigned int outCount;
-    Ivar * ivars = class_copyIvarList([self class], &outCount);
-    for (int i = 0; i < outCount; i ++) {
-        Ivar ivar = ivars[i];
-        
-        NSString * key = [NSString stringWithUTF8String:ivar_getName(ivar)];
-        [description appendFormat:@"%@=%@;",key,[self valueForKey:key]];
-//        [aCoder encodeObject:[self valueForKey:key] forKey:key];
-    }
-    
-    //释放内存
-    if (ivars != NULL) {
-        free(ivars);
-    }
-    
-    return description;
+- (NSString *)onlyGetter {
+    return @"onlyGetter";
 }
-
 
 @end
 
 @implementation XYYSubDemoModel
 
-- (NSString *)description
-{
-    NSMutableString * description = [NSMutableString string];
-    
-    unsigned int outCount;
-    Ivar * ivars = class_copyIvarList([self class], &outCount);
-    for (int i = 0; i < outCount; i ++) {
-        Ivar ivar = ivars[i];
-        
-        NSString * key = [NSString stringWithUTF8String:ivar_getName(ivar)];
-        [description appendFormat:@"%@=%@;",key,[self valueForKey:key]];
-        //        [aCoder encodeObject:[self valueForKey:key] forKey:key];
-    }
-    
-    //释放内存
-    if (ivars != NULL) {
-        free(ivars);
-    }
-    
-    return description;
-}
 
 @end

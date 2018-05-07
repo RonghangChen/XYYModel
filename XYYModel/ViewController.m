@@ -23,7 +23,14 @@
     
     NSArray<XYYDemoModel *> * models = [XYYDemoModel modelsWithDictionarys:dics];
     
-    NSLog(@"%@",models);
+    NSArray * jsonArrays = [models convertToJsonValue];
+    
+    NSLog(@"%@",jsonArrays);
+    
+    models = [XYYDemoModel modelsWithDictionarys:jsonArrays];
+    
+    
+    NSLog(@"%@",[models convertToJsonValue]);
     
 }
 

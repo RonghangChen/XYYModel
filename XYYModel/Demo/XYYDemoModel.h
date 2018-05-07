@@ -8,10 +8,24 @@
 
 #import "XYYModel.h"
 
-typedef struct {
+typedef struct XYYDemoStruct {
     int value1;
     float value2;
 } XYYDemoStruct;
+
+
+typedef struct XYYDemoStruct1 {
+    int value1;
+    float value2;
+} XYYDemoStruct1;
+
+
+@interface NSString(XYYDemoStruct1)
+
+- (XYYDemoStruct1)XYYDemoStruct1Value;
++ (NSString *)stringWithXYYDemoStruct1:(XYYDemoStruct1)struct1;
+
+@end
 
 
 @class XYYSubDemoModel;
@@ -23,7 +37,7 @@ typedef struct {
 //数字
 @property(nonatomic) NSInteger intValue;
 //自定义setter
-@property(nonatomic,setter=setFloatValue1:) NSInteger floatValue;
+@property(nonatomic,setter=setFloatValue1:) float floatValue;
 
 //转预定义对象
 @property(nonatomic,strong,readonly) NSDate * date;
@@ -32,7 +46,11 @@ typedef struct {
 @property(nonatomic,readonly) CGSize size;
 //自定义结构体
 @property(nonatomic,readonly) XYYDemoStruct demoStruct;
+//自定义结构体
+@property(nonatomic,readonly) XYYDemoStruct1 demoStruct1;
 
+//自定义结构体
+@property(nonatomic,readonly) NSString * onlyGetter;
 
 //子对象
 @property(nonatomic,strong,readonly) NSArray<XYYSubDemoModel *> * subModels;

@@ -115,72 +115,6 @@ static inline NSString * _structPropertyNameForType(NSString * type)
 }
 
 
-//获取数字值，拆箱
-static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, const char * type)
-{
-    assert(type != NULL);
-    
-    _MyPropertyNumberValue numberValue = {0};
-    if (value == nil || ![value isKindOfClass:[NSValue class]]) {
-        return numberValue;
-    }
-    
-    if ([value isKindOfClass:[NSNumber class]]) {
-        
-        switch (*type) {
-            case 'c':
-                numberValue.charValue = [(NSNumber *)value charValue];
-                break;
-            case 'C':
-                numberValue.unsignedCharValue = [(NSNumber *)value unsignedCharValue];
-                break;
-            case 's':
-                numberValue.shortValue = [(NSNumber *)value shortValue];
-                break;
-            case 'S':
-                numberValue.unsignedShortValue = [(NSNumber *)value unsignedShortValue];
-                break;
-            case 'i':
-                numberValue.intValue = [(NSNumber *)value intValue];
-                break;
-            case 'I':
-                numberValue.unsignedIntValue = [(NSNumber *)value unsignedIntValue];
-                break;
-            case 'l':
-                numberValue.longValue = [(NSNumber *)value longValue];
-                break;
-            case 'L':
-                numberValue.unsignedLongValue = [(NSNumber *)value unsignedLongValue];
-                break;
-            case 'q':
-                numberValue.longLongValue = [(NSNumber *)value longLongValue];
-                break;
-            case 'Q':
-                numberValue.unsignedLongLongValue = [(NSNumber *)value unsignedLongLongValue];
-                break;
-            case 'f':
-                numberValue.floatValue = [(NSNumber *)value floatValue];
-                break;
-            case 'd':
-                numberValue.doubleValue = [(NSNumber *)value doubleValue];
-                break;
-            case 'B':
-                numberValue.boolValue = (bool)[(NSNumber *)value boolValue];
-                break;
-                
-            default:
-                break;
-        }
-        
-    }else {
-        [(NSValue *)value getValue:&numberValue];
-    }
-    
-    return numberValue;
-}
-
-
-
 //----------------------------------------------------------
 
 //属性元数据
@@ -203,6 +137,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     //结构体类型名称
     NSString * _typeStruct;
     
+    //属性getter方法
+    SEL _getterSelector;
     //属性setter方法（只读属性改值为nil）
     SEL _setterSelector;
     //属性关联的变量(无关联变量为nil)
@@ -259,7 +195,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 
 #pragma mark - 帮助方法
 
-- (_MyModelPropertyData *)_getPropertyData:(NSString *)propertyName
+- (_MyModelPropertyData *)_getPropertyData:(NSString *)propertyName forDicToModle:(BOOL)dicToModle
 {
     if (propertyName.length == 0) {
         return nil;
@@ -278,7 +214,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     
     _MyModelPropertyData * data = [cache objectForKey:cacheKey];
     if (data != nil) { //存在缓存直接返回
-        return (id)data == [NSNull null] ? nil : data;
+        goto end;
     }
     
     //获取属性信息
@@ -288,6 +224,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
         BOOL isReadonly = NO;
         const char * typeValue = NULL;
         const char * ivarValue = NULL;
+        const char * getterValue = NULL;
         const char * setterValue = NULL;
         
         //获取属性的特性信息
@@ -304,47 +241,50 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 ivarValue = attribute.value;
             }else if (attributeName == 'S') { //setter方法名
                 setterValue = attribute.value;
+            }else if (attributeName == 'G') { //getter方法名
+                getterValue = attribute.value;
             }
         }
         
         _MyPropertyType type = _getPropertyType(typeValue);
         
         //判断属性是否有效
-        if (type != _MyPropertyTypeOther && //类型支持有效
-            (!isReadonly || //有setter方法
-             ivarValue != NULL)) { //有关联成员变量
-                
-                data = [[_MyModelPropertyData alloc] initWithName:propertyName];
-                
-                //缓存类型信息
-                data->_type = type;
-                data->_typeEncoding = [NSString stringWithUTF8String:typeValue];
-                switch (type) {
-                    case _MyPropertyTypeObject:
-                        data->_typeClass = _objectPropertyClassForType(data->_typeEncoding);
-                        break;
-                        
-                    case _MyPropertyTypeStruct:
-                        data->_typeStruct = _structPropertyNameForType(data->_typeEncoding);
-                        break;
-                        
-                    default:
-                        break;
-                }
-                
-                //获取类型内存尺寸
-                data->_typeSize = _sizeForType(data->_typeEncoding.UTF8String);
-                
-                //获取属性关联的成员变量
-                if (ivarValue) {
-                    data -> _ivar = class_getInstanceVariable(self.class, ivarValue);
-                }
-                
-                //获取属性setter方法
-                if (!isReadonly) {
-                    data->_setterSelector = sel_registerName(setterValue ? setterValue : [propertyName defaultSetterSelectorString].UTF8String);
-                }
+        if (type != _MyPropertyTypeOther) { //类型支持有效
+            
+            data = [[_MyModelPropertyData alloc] initWithName:propertyName];
+            
+            //缓存类型信息
+            data->_type = type;
+            data->_typeEncoding = [NSString stringWithUTF8String:typeValue];
+            switch (type) {
+                case _MyPropertyTypeObject:
+                    data->_typeClass = _objectPropertyClassForType(data->_typeEncoding);
+                    break;
+                    
+                case _MyPropertyTypeStruct:
+                    data->_typeStruct = _structPropertyNameForType(data->_typeEncoding);
+                    break;
+                    
+                default:
+                    break;
             }
+            
+            //获取类型内存尺寸
+            data->_typeSize = _sizeForType(data->_typeEncoding.UTF8String);
+            
+            //获取属性关联的成员变量
+            if (ivarValue) {
+                data -> _ivar = class_getInstanceVariable(self.class, ivarValue);
+            }
+            
+            //获取属性getter方法
+            data->_getterSelector = sel_registerName(getterValue ? getterValue : propertyName.UTF8String);
+            
+            //获取属性setter方法
+            if (!isReadonly) {
+                data->_setterSelector = sel_registerName(setterValue ? setterValue : [propertyName defaultSetterSelectorString].UTF8String);
+            }
+        }
         
         //释放内存
         if (attributes != NULL) {
@@ -355,23 +295,31 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
         [cache setObject:data ?: [NSNull null] forKey:cacheKey];
     }
     
-    return data;
+end:
+    
+    if (data == nil || data == (id)[NSNull null]) {
+        return nil;
+    }else if (dicToModle && data ->_setterSelector == NULL && data ->_ivar == NULL) { //转换成模型且没有setter和关联的成员变量则返回nil
+        return nil;
+    }else {
+        return data;
+    }
 }
 
 
-- (BOOL)isValidateProperty:(NSString *)propertyName
+- (BOOL)isValidateProperty:(NSString *)propertyName forDicToModle:(BOOL)dicToModle
 {
     //是否需要忽略
-    if ([self needIgnoreProperty:propertyName]) {
+    if ([self needIgnoreProperty:propertyName forDicToModle:dicToModle]) {
         return NO;
     }
     
-    _MyModelPropertyData * data = [self _getPropertyData:propertyName];
+    _MyModelPropertyData * data = [self _getPropertyData:propertyName forDicToModle:dicToModle];
     return data != nil;
 }
 
 
-#pragma mark - 更新属性值
+#pragma mark - dic/json to model
 
 //key转换成属性名称（key到属性名的映射），默认返回key值
 - (NSString *)propertyNameForKey:(NSString *)key {
@@ -379,11 +327,11 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 }
 
 //是否需要忽视属性
-- (BOOL)needIgnoreProperty:(NSString *)propertyName {
+- (BOOL)needIgnoreProperty:(NSString *)propertyName forDicToModle:(BOOL)dicToModle {
     return NO;
 }
 
-+ (BOOL)alwaysAccessIvarDirectlyIfCan {
+- (BOOL)alwaysAccessIvarDirectlyIfCanForDicToModle:(BOOL)dicToModle {
     return NO;
 }
 
@@ -403,30 +351,28 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 - (void)startUpdateProperty:(NSString *)propertyName withValue:(id)value
 {
     //是否需要忽略
-    if ([self needIgnoreProperty:propertyName]) {
+    if ([self needIgnoreProperty:propertyName forDicToModle:YES]) {
         return;
     }
     
     //对属性进行筛选，剔除掉不存在和无效的属性
-    _MyModelPropertyData * data = [self _getPropertyData:propertyName];
+    _MyModelPropertyData * data = [self _getPropertyData:propertyName forDicToModle:YES];
     if (data == nil) {
         return;
     }
     
     assert(data->_type != _MyPropertyTypeOther);
     
-    //对Value进行转换
+    //对value进行转换
     value = [self _convertValue:value propertyData:data];
-    
     
     //对属性进行赋值
     [self _updateProperty:data withValue:value];
-    
 }
 
 - (void)updateProperty:(NSString *)propertyName withValue:(id)value
 {
-    _MyModelPropertyData * propertyData = [self _getPropertyData:propertyName];
+    _MyModelPropertyData * propertyData = [self _getPropertyData:propertyName forDicToModle:YES];
     if (propertyData) {
         [self _updateProperty:propertyData withValue:value];
     }
@@ -436,7 +382,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 {
     //使用setter赋值
     if (propertyData->_setterSelector &&
-        (propertyData ->_ivar == NULL || ![[self class] alwaysAccessIvarDirectlyIfCan])) {
+        (propertyData ->_ivar == NULL || ![self alwaysAccessIvarDirectlyIfCanForDicToModle:YES])) {
         SEL setter = propertyData->_setterSelector;
         switch (propertyData->_type) {
             case _MyPropertyTypeObject: //对象
@@ -464,7 +410,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 
             default: //数字
             {
-                _MyPropertyNumberValue numberValue = _propertyNumberValueForValue(value, propertyData->_typeEncoding.UTF8String);
+                _MyPropertyNumberValue numberValue = {0};
+                [value unboxValue:&numberValue typeEncoding:propertyData->_typeEncoding.UTF8String];
                 ((void(*)(id,SEL,_MyPropertyNumberValue))objc_msgSend)(self,setter,numberValue);
                 
             }
@@ -497,7 +444,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 
             }else { //数字
                 
-                _MyPropertyNumberValue numberValue = _propertyNumberValueForValue(value, propertyData->_typeEncoding.UTF8String);
+                _MyPropertyNumberValue numberValue = {0};
+                [value unboxValue:&numberValue typeEncoding:propertyData->_typeEncoding.UTF8String];
                 memcpy(location, &numberValue, propertyData->_typeSize);
             }
         }
@@ -513,7 +461,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 
 - (id)convertValue:(id)value forProperty:(NSString *)propertyName
 {
-    _MyModelPropertyData * propertyData = [self _getPropertyData:propertyName];
+    _MyModelPropertyData * propertyData = [self _getPropertyData:propertyName forDicToModle:YES];
     if (propertyData) {
         return [self _convertValue:value propertyData:propertyData];
     }
@@ -627,8 +575,12 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 //首先通过默认时间格式转换
                 if([value isKindOfClass:[NSString class]]) {
                     NSDateFormatter * dateFormatter = [[NSDateFormatter alloc] init];
-                    dateFormatter.dateFormat = @"yyyy-MM-dd HH:mm:ss";
+                    dateFormatter.dateFormat = @"yyyy-MM-dd HH:mm:ss z";
                     NSDate * dateValue = [dateFormatter dateFromString:value];
+                    if (dateValue == nil) { //尝试用另一个时间格式转换
+                        dateFormatter.dateFormat = @"yyyy-MM-dd HH:mm:ss";
+                        dateValue = [dateFormatter dateFromString:value];
+                    }
                     if (dateValue == nil) { //尝试用另一个时间格式转换
                         dateFormatter.dateFormat = @"yyyy-MM-dd";
                         dateValue = [dateFormatter dateFromString:value];
@@ -639,14 +591,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                     }
                 }
                 
-                //再通过时间戳转换
-                NSTimeInterval timeInterval = 0.0;
-                if ([value respondsToSelector:@selector(doubleValue)]) {
-                    timeInterval = [value doubleValue];
-                }else if ([value respondsToSelector:@selector(integerValue)]) {
-                    timeInterval = [value integerValue];
-                }
-                
+                //尝试通过时间戳初始化
+                NSTimeInterval timeInterval = [[value performDefaultConvertToNumber] doubleValue];
                 if (timeInterval != 0.0) {
                     return [objectClass dateWithTimeIntervalSince1970:timeInterval];
                 }
@@ -700,8 +646,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                     value = [value performConvertReturnTypes:[NSObject numberTypeEncodings]
                                                    selectors:@selector(boolValue),
                              @selector(doubleValue),
-                             @selector(floatValue),
                              @selector(longLongValue),
+                             @selector(floatValue),
                              @selector(integerValue),
                              @selector(intValue),NULL];
                     
@@ -731,7 +677,44 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 
 - (id)_nilValueForPropertyData:(_MyModelPropertyData *)propertyData
 {
-    //通过属性类型进行默认转换
+    //获取自定义空值
+    SEL nibSelector = NSSelectorFromString([NSString stringWithFormat:@"nil%@Value",[propertyData->_name firstUppercaseString]]);
+    if ([self respondsToSelector:nibSelector]) {
+        
+        NSMethodSignature * methodSignature = [self methodSignatureForSelector:nibSelector];
+        if (methodSignature != nil) {
+            
+            //验证转换方法参数合理性
+            if (methodSignature.numberOfArguments == 2) {
+                
+                //验证返回值是否合理
+                BOOL bRet = YES;
+                if (*methodSignature.methodReturnType == 'v') { //返回值是空
+                    bRet = NO;
+                }else {
+                    bRet = propertyData->_type == _getPropertyType(methodSignature.methodReturnType);
+                    
+                    //如果是结构体/联合体需要完全匹配
+                    if (bRet && propertyData->_type == _MyPropertyTypeStruct) {
+                        bRet = strcmp(methodSignature.methodReturnType, propertyData->_typeEncoding.UTF8String) == 0;
+                    }
+                }
+                
+                if (bRet) {
+                    
+                    //执行转换方法
+                    NSInvocation * invocation = [NSInvocation invocationWithMethodSignature:methodSignature];
+                    invocation.selector = nibSelector;
+                    [invocation invokeWithTarget:self];
+                    
+                    //返回装箱后返回值
+                    return [invocation getBoxReturnValue];
+                }
+            }
+        }
+    }
+    
+    //获取默认空值
     switch (propertyData->_type) {
         case _MyPropertyTypeObject: //对象
             return nil;
@@ -756,6 +739,200 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
             
         default:
             break;
+    }
+    
+    return nil;
+}
+
+#pragma mark - model to dic/json
+
+- (NSDictionary *)convertToDictionaryWithKeys:(NSArray<NSString *> *)keys forJson:(BOOL)forJson
+{
+    NSMutableDictionary * dictionary = [NSMutableDictionary dictionaryWithCapacity:keys.count];
+    for (NSString * key in keys) {
+        id value = [self _valueForProperty:[self propertyNameForKey:key] forJson:forJson];
+        if (value) {
+            [dictionary setObject:value forKey:key];
+        }
+    }
+    
+    return dictionary;
+}
+
+- (NSDictionary *)convertToDictionary:(BOOL)forJson
+{
+    //获取所有属性
+    unsigned int outCount;
+    objc_property_t * propertys = class_copyPropertyList([self class], &outCount);
+    NSMutableDictionary * dictionary = [NSMutableDictionary dictionaryWithCapacity:outCount];
+    for (int i = 0; i < outCount; ++ i) {
+        NSString * propertyName = [NSString stringWithUTF8String:property_getName(propertys[i])];
+        id value = [self _valueForProperty:propertyName forJson:forJson];
+        if (value) {
+            [dictionary setObject:value forKey:propertyName];
+        }
+    }
+    
+    //释放内存
+    if (propertys) {
+        free(propertys);
+    }
+    
+    return dictionary;
+}
+
+- (id)valueForKey:(NSString *)key forJson:(BOOL)forJson {
+    return [self _valueForProperty:[self propertyNameForKey:key] forJson:forJson];
+}
+
+- (id)_valueForProperty:(NSString *)propertyName forJson:(BOOL)forJson
+{
+    if (![self needIgnoreProperty:propertyName forDicToModle:NO]) {
+        _MyModelPropertyData * propertyData = [self _getPropertyData:propertyName forDicToModle:NO];
+        if (propertyData) {
+            
+            if (forJson) { //首先进行自定义转换
+                
+                //进行转换
+                SEL convertSelector = NSSelectorFromString([NSString stringWithFormat:@"convert%@ToJsonValue", [propertyData->_name firstUppercaseString]]);
+                if ([self respondsToSelector:convertSelector]) {
+                    
+                    NSMethodSignature * methodSignature = [self methodSignatureForSelector:convertSelector];
+                    if (methodSignature != nil) {
+                        
+                        //验证转换方法参数及返回值是否合理
+                        if (methodSignature.numberOfArguments == 2 &&
+                            *methodSignature.methodReturnType == '@') {
+                            
+                            //执行转换方法
+                            NSInvocation * invocation = [NSInvocation invocationWithMethodSignature:methodSignature];
+                            invocation.selector = convertSelector;
+                            [invocation invokeWithTarget:self];
+                            
+                            //返回装箱后返回值
+                            return [invocation getBoxReturnValue] ?: [NSNull null];
+                            
+                        }
+                    }
+                }
+                
+            }
+            
+            //进行默认转换
+            id value = nil;
+            if (propertyData->_ivar && [self alwaysAccessIvarDirectlyIfCanForDicToModle:NO]) { //   直接访问成员变量进行取值
+                
+                switch (propertyData->_type) {
+                    case _MyPropertyTypeObject: //对象
+                    {
+                        value = object_getIvar(self, propertyData->_ivar);
+                        if (value && forJson) {
+                            value = [value convertToJsonValue];
+                        }
+                    }
+                        break;
+                        
+                    case _MyPropertyTypeNumber: //数字
+                    {
+                        void * location = (((char *)(__bridge void *)self) + ivar_getOffset(propertyData->_ivar));
+                        _MyPropertyNumberValue numberValue;
+                        memcpy(&numberValue, location, propertyData->_typeSize);
+                        
+                        value = [NSObject boxValue:&numberValue typeEncoding:propertyData->_typeEncoding.UTF8String];
+                    }
+                        break;
+                        
+                    case _MyPropertyTypeStruct: //结构体/联合体
+                    {
+                        void * location = (((char *)(__bridge void *)self) + ivar_getOffset(propertyData->_ivar));
+                        void * buffer = malloc(propertyData->_typeSize);
+                        memcpy(buffer, location, propertyData->_typeSize);
+                        
+                        if (forJson) { //进行json转换
+                            value = [self _convertToJsonStructValue:buffer forPropertyData:propertyData];
+                        }else { //直接装箱
+                            value = [NSObject boxValue:buffer typeEncoding:propertyData->_typeEncoding.UTF8String];
+                        }
+                        
+                        free(buffer);
+                    }
+                        break;
+                        
+                    default:
+                        break;
+                }
+                
+            }else { //使用getter进行取值
+                
+                SEL getter = propertyData->_getterSelector;
+                if (propertyData->_type == _MyPropertyTypeObject) { //对象
+                    
+                    value = ((id(*)(id,SEL))objc_msgSend)(self,getter);
+                    if (value && forJson) {
+                        return [value convertToJsonValue];
+                    }
+                    
+                }else {
+                    
+                    NSInvocation * invocation = [NSInvocation invocationWithMethodSignature:[self methodSignatureForSelector:getter]];
+                    invocation.selector = getter;
+                    [invocation invokeWithTarget:self];
+                    
+                    if (propertyData->_type == _MyPropertyTypeNumber) { //数字
+                        _MyPropertyNumberValue numberValue;
+                        [invocation getReturnValue:&numberValue];
+                        
+                        //装箱
+                        value = [NSObject boxValue:&numberValue typeEncoding:propertyData->_typeEncoding.UTF8String];
+                        
+                    }else { //结构体/联合体
+                        
+                        void * buffer = malloc(propertyData->_typeSize);
+                        [invocation getReturnValue:buffer];
+                        
+                        if (forJson) { //进行json转换
+                            value = [self _convertToJsonStructValue:buffer forPropertyData:propertyData];
+                        }else { //直接装箱
+                            value = [NSObject boxValue:buffer typeEncoding:propertyData->_typeEncoding.UTF8String];
+                        }
+                        
+                        free(buffer);
+                    }
+                }
+            }
+            
+            return value ?: [NSNull null];
+        }
+    }
+    
+    return nil;
+}
+
+- (id)_convertToJsonStructValue:(void *)value forPropertyData:(_MyModelPropertyData *)propertyData
+{
+    //进行转换
+    SEL convertSelector = NSSelectorFromString([NSString stringWithFormat:@"stringWith%@:", propertyData -> _typeStruct]);
+    if ([NSString respondsToSelector:convertSelector]) {
+        
+        NSMethodSignature * methodSignature = [NSString methodSignatureForSelector:convertSelector];
+        if (methodSignature != nil) {
+            
+            //验证转换方法参数及返回值是否合理
+            if (methodSignature.numberOfArguments == 3 &&
+                strcmp([methodSignature getArgumentTypeAtIndex:2], propertyData->_typeEncoding.UTF8String) == 0 &&
+                strcmp(methodSignature.methodReturnType, @encode(NSString *)) == 0) {
+                
+                //执行转换方法
+                NSInvocation * invocation = [NSInvocation invocationWithMethodSignature:methodSignature];
+                invocation.selector = convertSelector;
+                [invocation setArgument:value atIndex:2];
+                [invocation invokeWithTarget:[NSString class]];
+                
+                //返回装箱后返回值
+                return [invocation getBoxReturnValue];
+                
+            }
+        }
     }
     
     return nil;
@@ -786,7 +963,8 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
                 void * location = (((char *)(__bridge void *)self) + ivar_getOffset(ivar));
                 size_t size = _sizeForType(typeEncoding);
                 if (type == _MyPropertyTypeNumber) { //数字
-                    _MyPropertyNumberValue numberValue = _propertyNumberValueForValue(value, typeEncoding);
+                    _MyPropertyNumberValue numberValue = {0};
+                    [value unboxValue:&numberValue typeEncoding:typeEncoding];
                     memcpy(location, &numberValue, size);
                 }else { //其他
                     void * buffer = malloc(size);
@@ -801,7 +979,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
         }
         
         //释放内存
-        if (ivars != NULL) {
+        if (ivars) {
             free(ivars);
         }
     }
@@ -845,7 +1023,7 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     }
     
     //释放内存
-    if (ivars != NULL) {
+    if (ivars) {
         free(ivars);
     }
 }
@@ -949,6 +1127,72 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
     return returnValue;
 }
 
+- (void)unboxValue:(void *)buffer typeEncoding:(const char *)typeEncoding
+{
+    if (buffer == NULL || typeEncoding == NULL || *typeEncoding == '\0') {
+        return;
+    }
+    
+    switch (*typeEncoding) {
+        case 'v': //空值
+            return;
+            break;
+            
+        case '@': //对象
+            *(void **)buffer = (__bridge void *)self;
+            break;
+            
+        case 'c': //整形
+            *(char *)buffer = [(NSNumber *)self charValue];
+            break;
+        case 'C':
+            *(unsigned char *)buffer = [(NSNumber *)self unsignedCharValue];
+            break;
+        case 's':
+            *(short *)buffer = [(NSNumber *)self shortValue];
+            break;
+        case 'S':
+            *(unsigned short *)buffer = [(NSNumber *)self unsignedShortValue];
+            break;
+        case 'i':
+            *(int *)buffer = [(NSNumber *)self intValue];
+            break;
+        case 'I':
+            *(unsigned int *)buffer = [(NSNumber *)self unsignedIntValue];
+            break;
+        case 'l':
+            *(long *)buffer = [(NSNumber *)self longValue];
+            break;
+        case 'L':
+            *(unsigned long *)buffer = [(NSNumber *)self unsignedLongValue];
+            break;
+        case 'q':
+            *(long long *)buffer = [(NSNumber *)self longLongValue];
+            break;
+        case 'Q':
+            *(unsigned long long *)buffer = [(NSNumber *)self unsignedLongLongValue];
+            break;
+        case 'f':
+            *(float *)buffer = [(NSNumber *)self floatValue];
+            break;
+        case 'd':
+            *(double *)buffer = [(NSNumber *)self doubleValue];
+            break;
+        case 'B':
+            *(bool *)buffer = [(NSNumber *)self boolValue];
+            break;
+            
+        default: //其他
+            
+            if ([self isKindOfClass:[NSValue class]] &&
+                strcmp(typeEncoding, [(NSValue *)self objCType]) == 0) {
+                [(NSValue *)self getValue:buffer];
+            }
+            
+            break;
+    }
+}
+
 - (id)performConvertReturnTypes:(NSSet<NSString *> *)returnTypes selectors:(SEL)aSelector,...
 {
     if (aSelector == NULL) {
@@ -1004,11 +1248,59 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 {
     return [self performConvertReturnTypes:[NSObject numberTypeEncodings]
                                  selectors:@selector(doubleValue),
-            @selector(floatValue),
             @selector(longLongValue),
+            @selector(floatValue),
             @selector(integerValue),
             @selector(intValue),
             @selector(boolValue),NULL];
+}
+
+- (id)convertToJsonValue
+{
+    //不做任何转换
+    if ([self isKindOfClass:[NSString class]] ||
+        [self isKindOfClass:[NSNumber class]] ||
+        [self isKindOfClass:[NSNull class]]) {
+        return self;
+    }
+    
+    //XYYModel
+    if ([self isKindOfClass:[XYYModel class]]) {
+        return [(XYYModel *)self convertToDictionary:YES];
+    }
+    
+    //NSArray
+    if ([self isKindOfClass:[NSArray class]]) {
+        NSMutableArray * jsonArray = [NSMutableArray arrayWithCapacity:[(NSArray *)self count]];
+        for (id object in (NSArray *)self) {
+            [jsonArray addObject:[object convertToJsonValue] ?: [NSNull null]];
+        }
+        return jsonArray;
+    }
+    
+    //NSSet
+    if ([self isKindOfClass:[NSSet class]]) {
+        NSMutableArray * jsonArray = [NSMutableArray arrayWithCapacity:[(NSSet *)self count]];
+        for (id object in (NSSet *)self) {
+            [jsonArray addObject:[object convertToJsonValue] ?: [NSNull null]];
+        }
+        return jsonArray;
+    }
+    
+    //NSDictionary
+    if ([self isKindOfClass:[NSDictionary class]]) {
+        NSMutableDictionary * jsonDictionary = [NSMutableDictionary dictionaryWithCapacity:[(NSDictionary *)self count]];
+        for (id key in [(NSDictionary *)self allKeys]) {
+            id jsonKey = [key convertToJsonValue];
+            id jsonValue = [[(NSDictionary *)self objectForKey:key] convertToJsonValue];
+            if (jsonKey && [jsonKey conformsToProtocol:@protocol(NSCopying)]) {
+                [jsonDictionary setObject:jsonValue ?: [NSNull null] forKey:jsonKey];
+            }
+        }
+        return jsonDictionary;
+    }
+    
+    return [self description];
 }
 
 @end
@@ -1095,29 +1387,52 @@ static inline _MyPropertyNumberValue _propertyNumberValueForValue(id value, cons
 - (CGPoint)CGPointValue {
     return CGPointFromString(self);
 }
-
 - (CGRect)CGRectValue {
     return CGRectFromString(self);
 }
-
 - (CGSize)CGSizeValue {
     return CGSizeFromString(self);
 }
-
 - (CGVector)CGVectorValue {
     return CGVectorFromString(self);
 }
-
 - (CGAffineTransform)CGAffineTransformValue {
     return CGAffineTransformFromString(self);
 }
-
 - (UIEdgeInsets)UIEdgeInsetsValue {
     return UIEdgeInsetsFromString(self);
 }
-
-- (UIOffset)UIOffset {
+- (UIOffset)UIOffsetValue {
     return UIOffsetFromString(self);
+}
+- (NSRange)NSRangeValue {
+    return NSRangeFromString(self);
+}
+
+
++ (NSString *)stringWithCGPoint:(CGPoint)point {
+    return NSStringFromCGPoint(point);
+}
++ (NSString *)stringWithCGRect:(CGRect)rect {
+    return NSStringFromCGRect(rect);
+}
++ (NSString *)stringWithCGSize:(CGSize)size {
+    return NSStringFromCGSize(size);
+}
++ (NSString *)stringWithCGVector:(CGVector)vector {
+    return NSStringFromCGVector(vector);
+}
++ (NSString *)stringWithCGAffineTransform:(CGAffineTransform)affineTransform {
+    return NSStringFromCGAffineTransform(affineTransform);
+}
++ (NSString *)stringWithUIEdgeInsets:(UIEdgeInsets)edgeInsets {
+    return NSStringFromUIEdgeInsets(edgeInsets);
+}
++ (NSString *)stringWithUIOffset:(UIOffset)offset {
+    return NSStringFromUIOffset(offset);
+}
++ (NSString *)stringWithNSRange:(NSRange)range {
+    return NSStringFromRange(range);
 }
 
 @end
