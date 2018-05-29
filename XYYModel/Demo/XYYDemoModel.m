@@ -61,6 +61,10 @@
         return [XYYSubDemoModel class];
     }
     
+    IMP imp = class_getMethodImplementation([self class], @selector(setDate:));
+    ((void(*)(id,SEL,id))imp)(self,@selector(setDate:),nil);
+    
+    
     return nil;
 }
 

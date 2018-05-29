@@ -37,7 +37,7 @@ typedef struct XYYDemoStruct1 {
 //数字
 @property(nonatomic) NSInteger intValue;
 //自定义setter
-@property(nonatomic,setter=setFloatValue1:) float floatValue;
+@property(nonatomic,setter=setFloatValue1:) CGFloat floatValue;
 
 //转预定义对象
 @property(nonatomic,strong,readonly) NSDate * date;

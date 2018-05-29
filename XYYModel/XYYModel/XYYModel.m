@@ -19,7 +19,8 @@ typedef NS_ENUM(NSInteger,_MyPropertyType) {
     _MyPropertyTypeObject = 0, //对象
     _MyPropertyTypeStruct, //结构体或联合体
     _MyPropertyTypeNumber, //C语言数字
-    _MyPropertyTypeOther //其他不支持
+    _MyPropertyTypeOther, //其他
+    _MyPropertyTypeUnsupported = _MyPropertyTypeOther //其他不支持
 };
 
 //属性数字值
@@ -132,9 +133,9 @@ static inline NSString * _structPropertyNameForType(NSString * type)
     //属性类型所占用内存大小
     size_t _typeSize;
     
-    //对象类型的class
+    //对象类型的class（如果属性类型是对象该值有意义）
     Class _typeClass;
-    //结构体类型名称
+    //结构体/联合体类型名称（如果属性类型是结构体/联合体该值有意义）
     NSString * _typeStruct;
     
     //属性getter方法
