@@ -26,160 +26,121 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 
 # 如何安装
 
-下载源码直接
+下载源码直接引入工程 或者 
+使用CocoPods 添加 pod 'XYYModel'
 
 # 如何使用
 
 ## 1.字典转模型
-继承XYYModel类，调用modelsWithDictionarys:或者initWithDictionary:即可进行字典到模型的转换，也可以使用updateWithDictionary:进行更新模型
+调用xyy_modelsWithDictionarys:或者xyy_initWithDictionary:即可进行字典到模型的转换，也可以使用xyy_updateWithDictionary:进行更新模型
 
 
 ## 2.模型转字典
-调用convertToDictionaryWithKeys:forJson:或者convertToDictionary:即可进行模型到字典的转换
+调用xyy_convertToDictionaryWithKeys:forJson:或者xyy_convertToDictionary:即可进行模型到字典的转换
 
 
 ## 3.定制转换过程
 
 ### 3.1.忽视属性
-覆盖实现needIgnoreProperty:forDicToModle:方法，示例如下
+覆盖实现xyy_needIgnoreProperty:forDicToModel:方法，示例如下
 
+```
+- (BOOL)xyy_needIgnoreProperty:(NSString *)propertyName forDicToModel:(BOOL)dicToModel
 {
 
-    - (BOOL)needIgnoreProperty:(NSString *)propertyName forDicToModle:(BOOL)dicToModle
-    {
-
-        if ([propertyName isEqualToString:@"needIgnore"]) {
-            return YES;
-        }
-    
-    
-        if (dicToModle && [propertyName isEqualToString:@"needIgnoreDicToModle"]) {
-        
-            return YES;
-            
-        }
-    
-        return [super needIgnoreProperty:propertyName forDicToModle:dicToModle];
-    
+    if ([propertyName isEqualToString:@"needIgnore"]) {
+        return YES;
     }
     
+    if (dicToModle && [propertyName isEqualToString:@"needIgnoreDicToModle"]) {
+        return YES;
+    }
+
+    return [super xyy_needIgnoreProperty:propertyName forDicToModel:dicToModel];
 }
+    
+```
 
 
 ### 3.2.定制key到属性的映射
-覆盖实现propertyNameForKey:方法，示例如下
+覆盖实现xyy_propertyNameForKey:方法，示例如下
 
+```
+- (NSString *)xyy_propertyNameForKey:(NSString *)key
 {
-
-    - (NSString *)propertyNameForKey:(NSString *)key
-    {
-
-
-        if ([key isEqualToString:@"key1"]) {
-        
-
-            return @"propertyName1";
-
-        }
-
-        return [super propertyNameForKey:key];
-        
+    if ([key isEqualToString:@"key1"]) {
+        return @"propertyName1";
     }
-    
-}
 
+    return [super xyy_propertyNameForKey:key];
+}
+```
 
 ### 3.3.定制value值转换
 实现convert#PropertyName#Value:格式方法，返回转换后的值，示例如下
 
+```
+- (XYYDemoStruct)convertDemoStructValue:(id)value
 {
-
-    - (XYYDemoStruct)convertDemoStructValue:(id)value
-    {
-
-        XYYDemoStruct result = {0};
-
-        if ([value isKindOfClass:[NSString class]]) {
-
-            NSArray<NSString *> * components = [value componentsSeparatedByString:@","];
-
-            if (components.count == 2) {
-
-                result.value1 = [components[0] intValue];
-
-                result.value2 = [components[1] floatValue];
-
-            }
-
+    XYYDemoStruct result = {0};
+    if ([value isKindOfClass:[NSString class]]) {
+        NSArray<NSString *> * components = [value componentsSeparatedByString:@","];
+        if (components.count == 2) {
+            result.value1 = [components[0] intValue];
+            result.value2 = [components[1] floatValue];
         }
-
-        return result;
     }
-    
+    return result;
 }
+```
 
 ### 3.4.定制赋值取值方式
-实现alwaysAccessIvarDirectlyIfCanForDicToModle:方法，可定制取值赋值方法，示例如下
+实现xyy_alwaysAccessIvarDirectlyIfCanForDicToModel:方法，可定制取值赋值方法，示例如下
 
+```
+- (XYYDemoStruct)xyy_alwaysAccessIvarDirectlyIfCanForDicToModel:(id)dicToModel
 {
-
-    - (XYYDemoStruct)alwaysAccessIvarDirectlyIfCanForDicToModle:(id)dicToModle
-    {
-        if(dicToModle) {
-        
-            return YES;
-            
-        }
-
-        return NO;
+    if(dicToModel) {
+        return YES;
     }
-    
+    return NO;
 }
+```
 
 ### 3.5.定制value空值
 实现nil#PropertyName#Value:格式方法，返回属性对应的空值，示例如下
 
-{
-
-    - (CGSize)nilSize1Value:(id)value {
-    
-        return CGSizeMake(1.f,2.f);
-        
-    }
-    
+```
+- (CGSize)nilSize1Value:(id)value {
+    return CGSizeMake(1.f,2.f);
 }
-
+```
 
 ### 3.5实现组合模型转换
-覆盖实现arrayContentClassForProperty:方法，示例如下
+覆盖实现xyy_arrayContentClassForProperty:方法，示例如下
+
+```
+- (Class)xyy_arrayContentClassForProperty:(NSString *)propertyName 
 {
-
-    - (Class)arrayContentClassForProperty:(NSString *)propertyName 
-    {
-        if ([propertyName isEqualToString:@"subModels"]) {
-
-            return [XYYSubDemoModel class];
-
-        }
-
-        return nil;
+    if ([propertyName isEqualToString:@"subModels"]) {
+        return [XYYSubDemoModel class];
     }
-    
+    return nil;
 }
-
+```
 
 
 # 转换策略及流程简介
 
 ## 字典（json）转模型
 
-### (1)通过propertyNameForKey:方法获取key对应的属性名称
+### (1)通过xyy_propertyNameForKey:方法获取key对应的属性名称
 
 
 ### (2)判断属性是否有效（可赋值属性）
 属性是否有效需满足四个条件:
 
-1.属性没有被needIgnoreProperty:forDicToModle:方法忽视
+1.属性没有被xyy_needIgnoreProperty:forDicToModel:方法忽视
 
 2.属性名对应属性存在
 
@@ -200,7 +161,7 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 
 1.属性值为空（包括NSNull对象)返回空值
 
-2.属性类型为对象:首先判断值是否是同一种类对象，是直接返回，否则执行默认转换策略进行转换（能进行默认转换的类NSString、NSMutableString、NSMutableArray、NSMutableDictionary、NSNumber、NSDecimalNumber、NSDate以及MyModel子类），无法转换则返回nil
+2.属性类型为对象:首先判断值是否是同一种类对象，是直接返回，否则执行默认转换策略进行转换（能进行默认转换的类NSString、NSMutableString、NSMutableArray、NSMutableDictionary、NSNumber、NSDecimalNumber、NSDate以及遵循XYYJsonModel协议的类），无法转换则返回nil
 
 3.属性类型为结构体或联合体:使用#structName/unionName#Value方法进行转换，无法转换则返回空值
 
@@ -233,13 +194,13 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 
 ## 模型转字典（json）
 
-### (1)通过propertyNameForKey:方法获取key对应的属性名称
+### (1)通过xyy_propertyNameForKey:方法获取key对应的属性名称
 
 
 ### (2)判断属性是否有效（可赋值属性）
 属性是否有效需满足三个条件:
 
-1.属性没有被needIgnoreProperty:forDicToModle:方法忽视
+1.属性没有被xyy_needIgnoreProperty:forDicToModle:方法忽视
 
 2.属性名对应属性存在
 
@@ -258,7 +219,7 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 
 #### 2)如果目标值为json值,首先(如果存在)会调用convert#PropertyName#ToJsonValue格式方法获取自定义json值，否则使用默认转换策略进行转换，默认策略如下
 
-1.value为对象,如果为nil则返回NSNull对象,其他情况调用convertToJsonValue方法进行转换,具体的默认转换策略参见convertToJsonValue方法定义
+1.value为对象,如果为nil则返回NSNull对象,其他情况调用xyy_convertToJsonValue方法进行转换,具体的默认转换策略参见xyy_convertToJsonValue方法定义
     
 2.value为C语言数字类型（基本数据类型）使用NSNumber进行装箱
 
@@ -269,13 +230,13 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 
 1.对象为NSNumber,NSString,NSNull类及其子类，不做任何转换
 
-2.对象为XYYModel子类,调用convertToDictionary:进行转换
+2.对象遵循XYYJsonModel协议,调用xyy_convertToDictionary:进行转换
 
-3.对象NSArray,遍历所有成员调用convertToJsonValue操作生成新的NSArray
+3.对象NSArray,遍历所有成员调用xyy_convertToJsonValue操作生成新的NSArray
 
-4.对象为NSSet,遍历所有成员调用convertToJsonValue操作生成NSArray
+4.对象为NSSet,遍历所有成员调用xyy_convertToJsonValue操作生成NSArray
 
-5.对象为NSDictionary,遍历所有key-value分别对key和value调用convertToJsonValue操作生成新的NSDictionary
+5.对象为NSDictionary,遍历所有key-value分别对key和value调用xyy_convertToJsonValue操作生成新的NSDictionary
 
 6.对象为其他情况默认调用description返回对象描述
 
