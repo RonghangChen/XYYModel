@@ -24,8 +24,7 @@
     return result;
 }
 
-+ (NSString *)stringWithXYYDemoStruct1:(XYYDemoStruct1)struct1
-{
++ (NSString *)stringWithXYYDemoStruct1:(XYYDemoStruct1)struct1 {
     return [NSString stringWithFormat:@"%i,%f",struct1.value1,struct1.value2];
 }
 
@@ -33,8 +32,8 @@
 
 @implementation XYYDemoModel
 
-- (BOOL)alwaysAccessIvarDirectlyIfCanForDicToModle:(BOOL)dicToModle {
-    return !dicToModle;
+- (BOOL)xyy_alwaysAccessIvarDirectlyIfCanForDicToModel:(BOOL)dicToModel {
+    return !dicToModel;
 }
 
 - (XYYDemoStruct)convertDemoStructValue:(id)value
@@ -55,15 +54,11 @@
     return [NSString stringWithFormat:@"%i,%f",self.demoStruct.value1,self.demoStruct.value2];
 }
 
-- (Class)arrayContentClassForProperty:(NSString *)propertyName {
+- (Class)xyy_arrayContentClassForProperty:(NSString *)propertyName {
     
     if ([propertyName isEqualToString:@"subModels"]) {
         return [XYYSubDemoModel class];
     }
-    
-    IMP imp = class_getMethodImplementation([self class], @selector(setDate:));
-    ((void(*)(id,SEL,id))imp)(self,@selector(setDate:),nil);
-    
     
     return nil;
 }

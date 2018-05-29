@@ -29,7 +29,7 @@ typedef struct XYYDemoStruct1 {
 
 
 @class XYYSubDemoModel;
-@interface XYYDemoModel : XYYModel
+@interface XYYDemoModel : NSObject<XYYJsonModel>
 
 //普通对象
 @property(nonatomic,strong,readonly) NSString * string;
@@ -58,7 +58,7 @@ typedef struct XYYDemoStruct1 {
 @end
 
 
-@interface XYYSubDemoModel : XYYModel
+@interface XYYSubDemoModel : NSObject<XYYJsonModel>
 
 //字符
 @property(nonatomic,strong,readonly) NSString * string;

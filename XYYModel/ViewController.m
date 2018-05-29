@@ -21,16 +21,16 @@
     
     NSArray * dics = [NSArray arrayWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"Demo" ofType:@"plist"]];
     
-    NSArray<XYYDemoModel *> * models = [XYYDemoModel modelsWithDictionarys:dics];
+    NSArray<XYYDemoModel *> * models = [XYYDemoModel xyy_modelsWithDictionarys:dics];
     
-    NSArray * jsonArrays = [models convertToJsonValue];
+    NSArray * jsonArrays = [models xyy_convertToJsonValue];
     
     NSLog(@"%@",jsonArrays);
     
-    models = [XYYDemoModel modelsWithDictionarys:jsonArrays];
+    models = [XYYDemoModel xyy_modelsWithDictionarys:jsonArrays];
     
     
-    NSLog(@"%@",[models convertToJsonValue]);
+    NSLog(@"%@",[models xyy_convertToJsonValue]);
     
 }
 
