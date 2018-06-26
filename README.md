@@ -27,7 +27,7 @@ objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使�
 # 如何安装
 
 下载源码直接引入工程 或者 
-使用CocoPods 添加 pod 'XYYModel'
+使用CocoaPods 添加 pod 'XYYModel'
 
 # 如何使用
 
