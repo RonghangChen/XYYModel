@@ -2,7 +2,7 @@
 项目迁移到https://github.com/RonghangChen/XYYKit.git 使用pod 'XYYModel' 或者 pod 'XYYKit/XYYModel'都可以
 
 # XYYModel
-objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使用简单，高容错性，转换过程可自定义。相关介绍博文：https://www.jianshu.com/p/a614d2ef80e1
+objc轻量字典(JSON)转模型库，单文件，无任何依懒，高效，使用简单，高容错性，转换过程可自定义。相关介绍博文：https://www.jianshu.com/p/1a9d6b3cae9e
 
 # 主要功能
 
